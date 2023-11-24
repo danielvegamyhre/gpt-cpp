@@ -21,6 +21,7 @@ private:
 public:
     FeedForward(const unsigned int& num_embed_dims);
     torch::Tensor forward(const torch::Tensor& x);
+    torch::Tensor operator()(const torch::Tensor& x);
 };
 
 // Single head of self-attention.
@@ -34,6 +35,7 @@ private:
 public:
     Head(const unsigned int& head_size);
     torch::Tensor forward(const torch::Tensor& x);
+    torch::Tensor operator()(const torch::Tensor& x);
 };
 
 // Multi-head attention layer of a transformer block.
@@ -45,4 +47,18 @@ private:
 public:
     MultiHeadAttention(const unsigned int& num_heads, const unsigned int& head_size);
     torch::Tensor forward(const torch::Tensor& x);
+    torch::Tensor operator()(const torch::Tensor& x);
+};
+
+// Transformer block.
+class Block : public torch::nn::Module {
+private:
+    MultiHeadAttention self_attention;
+    FeedForward feed_forward;
+    torch::nn::LayerNorm layer_norm_1;
+    torch::nn::LayerNorm layer_norm_2;
+public:
+    Block(const unsigned int& num_heads);
+    torch::Tensor forward(torch::Tensor x);
+    torch::Tensor operator()(const torch::Tensor& x);
 };

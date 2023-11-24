@@ -15,6 +15,10 @@ torch::Tensor FeedForward::forward(const torch::Tensor& x) {
     return seq->forward(x);
 };
 
+torch::Tensor FeedForward::operator()(const torch::Tensor& x) {
+    return forward(x);
+}
+
 // Head implementation.
 Head::Head(const unsigned int& head_size) :
     head_size(head_size),
@@ -63,6 +67,10 @@ torch::Tensor Head::forward(const torch::Tensor& x) {
     return torch::mm(wei, v);
 }
 
+torch::Tensor Head::operator()(const torch::Tensor& x) {
+    return forward(x);
+}
+
 // MultiHeadAttention implementation.
 MultiHeadAttention::MultiHeadAttention(const unsigned int &num_heads, const unsigned int &head_size) :
     heads(torch::nn::ModuleList()),
@@ -81,4 +89,26 @@ torch::Tensor MultiHeadAttention::forward(const torch::Tensor& x) {
     torch::Tensor out = torch::cat(outputs);
     out = projection(out);
     return dropout(out);
+}
+
+torch::Tensor MultiHeadAttention::operator()(const torch::Tensor& x) {
+    return forward(x);
+}
+
+// Transformer block implementation.
+Block::Block(const unsigned int& num_heads) :
+        self_attention(MultiHeadAttention(num_heads, EMBED_SIZE/num_heads)),
+        feed_forward(EMBED_SIZE),
+        layer_norm_1(torch::nn::LayerNorm(torch::nn::LayerNormOptions({EMBED_SIZE}))),
+        layer_norm_2(torch::nn::LayerNorm(torch::nn::LayerNormOptions({EMBED_SIZE}))) {
+}
+
+torch::Tensor Block::forward(torch::Tensor x) {
+    x = x + self_attention(layer_norm_1(x));
+    x = x + feed_forward(layer_norm_2(x));
+    return x;
+}
+
+torch::Tensor Block::operator()(const torch::Tensor& x) {
+    return forward(x);
 }
