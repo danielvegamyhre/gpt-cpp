@@ -62,3 +62,18 @@ public:
     torch::Tensor forward(torch::Tensor x);
     torch::Tensor operator()(const torch::Tensor& x);
 };
+
+// Decoder-only transformer model.
+class GPT : public torch::nn::Module {
+private:
+    torch::nn::Embedding token_embedding_table;
+    torch::nn::Embedding position_embedding_table;
+    torch::nn::Sequential blocks;
+    torch::nn::LayerNorm layer_norm;
+    torch::nn::Linear lm_head;
+    static void init_weights(torch::nn::Module module);
+public:
+    GPT(const unsigned int& vocab_size);
+    torch::Tensor forward(const torch::Tensor& x);
+    torch::Tensor operator()(const torch::Tensor& x);
+};

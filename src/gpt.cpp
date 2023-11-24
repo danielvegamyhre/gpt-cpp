@@ -76,6 +76,7 @@ MultiHeadAttention::MultiHeadAttention(const unsigned int &num_heads, const unsi
     heads(torch::nn::ModuleList()),
     projection(torch::nn::Linear(num_heads * head_size, EMBED_SIZE)),
     dropout(torch::nn::Dropout(DROPOUT)) {
+
     for (int i=0; i < num_heads; ++i) {
         heads->push_back(Head(head_size));
     }
@@ -111,4 +112,24 @@ torch::Tensor Block::forward(torch::Tensor x) {
 
 torch::Tensor Block::operator()(const torch::Tensor& x) {
     return forward(x);
+}
+
+
+// Decoder-only transformer model implementation.
+GPT::GPT(const unsigned int& vocab_size) :
+    token_embedding_table(torch::nn::Embedding(torch::nn::EmbeddingOptions(vocab_size, EMBED_SIZE))),
+    position_embedding_table(torch::nn::Embedding(torch::nn::EmbeddingOptions(SEQ_LEN, EMBED_SIZE))),
+    blocks(torch::nn::Sequential(
+            Block(4),
+            Block(4),
+            Block(4))),
+    layer_norm(torch::nn::LayerNorm(torch::nn::LayerNormOptions({EMBED_SIZE}))),
+    lm_head(torch::nn::Linear(EMBED_SIZE, vocab_size)) {
+
+    apply(init_weights);
+}
+
+// Weight initialization
+void GPT::init_weights(torch::nn::Module module) {
+
 }
