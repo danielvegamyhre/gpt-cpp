@@ -191,7 +191,7 @@ std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, c
 
 // generate predicts the next `max_new_tokens` given the input idx, which an index
 // of shape (B,T) representing the current context.
-torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int max_new_tokens) {
+torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int& max_new_tokens) {
     for (int i = 0; i < max_new_tokens; ++i) {
         // crop context to last "max sequence length" tokens
         torch::IntArrayRef idx_sizes = idx.sizes();
