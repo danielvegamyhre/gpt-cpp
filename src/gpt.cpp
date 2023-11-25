@@ -73,7 +73,9 @@ torch::Tensor Head::operator()(const torch::Tensor& x) {
 
 // MultiHeadAttention implementation.
 MultiHeadAttention::MultiHeadAttention(const unsigned int &num_heads, const unsigned int &head_size) :
-    heads(torch::nn::ModuleList()),
+    heads(torch::nn::ModuleList(
+
+            )),
     projection(torch::nn::Linear(num_heads * head_size, EMBED_SIZE)),
     dropout(torch::nn::Dropout(DROPOUT)) {
 
@@ -130,6 +132,58 @@ GPT::GPT(const unsigned int& vocab_size) :
 }
 
 // Weight initialization
-void GPT::init_weights(torch::nn::Module module) {
+void GPT::init_weights(const torch::nn::Module& module) {
+    if (typeid(module) == typeid(torch::nn::Linear)) {
+        torch::nn::Linear linear = dynamic_cast<const torch::nn::Linear&>(module);
+        torch::nn::init::normal_(linear->weight, 0.0, 0.02);
+        if (linear->options.bias()) {
+            torch::nn::init::zeros_(linear->bias);
+        }
+    } else if (typeid(module) == typeid(torch::nn::Embedding)) {
+        torch::nn::Embedding embedding = dynamic_cast<const torch::nn::Embedding&>(module);
+        torch::nn::init::normal_(embedding->weight, 0.0, 0.02);
+    }
+}
 
+// forward performs a forward pass through the transformer model.
+// Returns the logits and the loss (if targets were specified).
+// idx = 2-dimensional index into the token + position embedding tables
+//       (i.e. for batch B at token T, what is the embedding vector?)
+// targets = "y values" / truth, used for training but not generation.
+std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, torch::Tensor* labels) {
+    if (idx.dim() != 2) {
+        throw std::invalid_argument("input shape must be 2 dimensions");
+    }
+    torch::IntArrayRef sizes = idx.sizes();
+    const int T = sizes[1]; // time/token dimension
+
+    // (B,T,C)
+    torch::Tensor tok_emb = token_embedding_table(idx);
+
+    // (T, C)
+    torch::Tensor pos_emb = position_embedding_table(torch::arange(torch::Scalar(T), torch::TensorOptions(DEVICE)));
+
+    torch::Tensor x = tok_emb + pos_emb;     // (B,T,C)
+    x = blocks->forward(x);               // (B,T,C)
+    x = layer_norm(x);                 // (B,T,C)
+    torch::Tensor logits = lm_head(x); // (B,T,C)
+
+    if (labels == nullptr) {
+        // We don't calculate loss for generation (no y-values / labels).
+        return {logits, torch::Tensor{nullptr}};
+    }
+
+    if (logits.dim() != 3) {
+        throw std::runtime_error("unexpected shape, logits should have 3 dimensions");
+    }
+
+    // Calculate loss.
+    torch::IntArrayRef logits_sizes = logits.sizes();
+    const int logits_B = logits_sizes[0]; // logits batch dimension
+    const int logits_T = logits_sizes[1]; // logits token dimension
+    const int logits_C = logits_sizes[2]; // logits channels
+    logits = logits.view({logits_B * logits_T, logits_C});
+    torch::Tensor y_values = (*labels).view({logits_B * logits_T});
+    torch::Tensor loss = torch::nn::functional::cross_entropy(logits, y_values);
+    return {logits, loss};
 }
