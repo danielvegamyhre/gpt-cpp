@@ -150,7 +150,7 @@ void GPT::init_weights(const torch::nn::Module& module) {
 // idx = 2-dimensional index into the token + position embedding tables
 //       (i.e. for batch B at token T, what is the embedding vector?)
 // targets = "y values" / truth, used for training but not generation.
-std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, torch::Tensor* labels) {
+std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, c10::optional<torch::Tensor> labels) {
     if (idx.dim() != 2) {
         throw std::invalid_argument("input shape must be 2 dimensions");
     }
@@ -168,10 +168,11 @@ std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, t
     x = layer_norm(x);                 // (B,T,C)
     torch::Tensor logits = lm_head(x); // (B,T,C)
 
-    if (labels == nullptr) {
+    if (!labels.has_value()) {
         // We don't calculate loss for generation (no y-values / labels).
         return {logits, torch::Tensor{nullptr}};
     }
+    torch::Tensor labels_tensor = labels.value();
 
     if (logits.dim() != 3) {
         throw std::runtime_error("unexpected shape, logits should have 3 dimensions");
@@ -183,7 +184,37 @@ std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, t
     const int logits_T = logits_sizes[1]; // logits token dimension
     const int logits_C = logits_sizes[2]; // logits channels
     logits = logits.view({logits_B * logits_T, logits_C});
-    torch::Tensor y_values = (*labels).view({logits_B * logits_T});
+    torch::Tensor y_values = labels_tensor.view({logits_B * logits_T});
     torch::Tensor loss = torch::nn::functional::cross_entropy(logits, y_values);
     return {logits, loss};
+}
+
+// generate predicts the next `max_new_tokens` given the input idx, which an index
+// of shape (B,T) representing the current context.
+torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int max_new_tokens) {
+    for (int i = 0; i < max_new_tokens; ++i) {
+        // crop context to last "max sequence length" tokens
+        torch::IntArrayRef idx_sizes = idx.sizes();
+        unsigned int ctx_len = idx_sizes[1];
+        torch::Tensor idx_cond = idx.slice(/*dim=*/0).slice(1, /*start=*/ctx_len-SEQ_LEN);
+
+        // predict next token
+        auto[logits, loss] = forward(idx);
+
+        // focus only on the last step in time (final token)
+        torch::IntArrayRef logits_sizes = logits.sizes();
+        unsigned int tok_len = logits_sizes[1];
+        logits = logits.slice(0).slice(1, tok_len-1).slice(0);
+
+        // apply softmax to get probabilities (along token dimension)
+        torch::Tensor probs = torch::nn::functional::softmax(logits, torch::nn::functional::SoftmaxFuncOptions(1));
+
+        // sample from that probability distribution
+        torch::Tensor next_idx = torch::multinomial(probs, /*num_samples*/1);
+
+        // add the new index to the context for the next iteration
+        // by concatenating the predicted tokens for each batch along the token dimension.
+        idx = torch::cat({idx, next_idx}, /*dim=*/1);
+    }
+    return idx;
 }

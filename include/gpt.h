@@ -77,6 +77,7 @@ private:
     static void init_weights(const torch::nn::Module& module);
 public:
     GPT(const unsigned int& vocab_size);
-    std::pair<torch::Tensor, torch::Tensor> forward(const torch::Tensor& idx, torch::Tensor* labels);
-    torch::Tensor operator()(const torch::Tensor& x);
+    std::pair<torch::Tensor, torch::Tensor> forward(const torch::Tensor& idx, c10::optional<torch::Tensor> labels = c10::nullopt);
+    torch::Tensor generate(torch::Tensor& idx, const unsigned int max_new_tokens);
+    torch::Tensor operator()(const torch::Tensor& idx, torch::Tensor* labels);
 };
