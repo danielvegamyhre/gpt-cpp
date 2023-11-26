@@ -14,10 +14,14 @@ find_library(SP_TRAIN_LIBRARY NAMES sentencepiece_train)
 find_path(SP_INCLUDE_DIR NAMES sentencepiece_processor.h)
 find_path(SP_INCLUDE_DIR NAMES sentencepiece_trainer.h)
 
-add_executable(${PROJECT_NAME} src/main.cpp
+add_executable(${PROJECT_NAME}
+        src/main.cpp
         include/gpt.h
+        include/tokenizer.h
         src/gpt.cpp
-        src/train_tokenizer.cpp)
+        src/tokenizer.cpp
+        src/tokenizer.cpp
+)
 
 target_include_directories(gpt_cpp PRIVATE include)
 target_include_directories(gpt_cpp PRIVATE ${SP_INCLUDE_DIR})
