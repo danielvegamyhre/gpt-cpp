@@ -14,9 +14,6 @@ static const unsigned int EMBED_SIZE = 384;
 // Dropout ratio.
 static const float DROPOUT = 0.2f;
 
-// Device.
-static const std::string DEVICE = "mps";
-
 // Simple feed-forward network.
 class FeedForward : public torch::nn::Module {
 private:
@@ -69,6 +66,7 @@ public:
 // Decoder-only transformer model.
 class GPT : public torch::nn::Module {
 private:
+    const std::string device;
     torch::nn::Embedding token_embedding_table;
     torch::nn::Embedding position_embedding_table;
     torch::nn::Sequential blocks;
@@ -76,7 +74,7 @@ private:
     torch::nn::Linear lm_head;
     static void init_weights(const torch::nn::Module& module);
 public:
-    GPT(const unsigned int& vocab_size);
+    GPT(const unsigned int& vocab_size, const std::string& device);
     std::pair<torch::Tensor, torch::Tensor> forward(const torch::Tensor& idx, c10::optional<torch::Tensor> labels = c10::nullopt);
     torch::Tensor generate(torch::Tensor& idx, const unsigned int& max_new_tokens);
     torch::Tensor operator()(const torch::Tensor& idx, torch::Tensor* labels);

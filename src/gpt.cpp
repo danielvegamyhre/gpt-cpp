@@ -1,4 +1,5 @@
 #include <iostream>
+#include <utility>
 #include <torch/torch.h>
 #include "gpt.h"
 
@@ -118,7 +119,8 @@ torch::Tensor Block::operator()(const torch::Tensor& x) {
 
 
 // Decoder-only transformer model implementation.
-GPT::GPT(const unsigned int& vocab_size) :
+GPT::GPT(const unsigned int& vocab_size, const std::string& device) :
+    device(device),
     token_embedding_table(torch::nn::Embedding(torch::nn::EmbeddingOptions(vocab_size, EMBED_SIZE))),
     position_embedding_table(torch::nn::Embedding(torch::nn::EmbeddingOptions(SEQ_LEN, EMBED_SIZE))),
     blocks(torch::nn::Sequential(
@@ -158,10 +160,10 @@ std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, c
     const int T = sizes[1]; // time/token dimension
 
     // (B,T,C)
-    torch::Tensor tok_emb = token_embedding_table(idx);
+    torch::Tensor tok_emb = token_embedding_table(idx).to(device);
 
     // (T, C)
-    torch::Tensor pos_emb = position_embedding_table(torch::arange(torch::Scalar(T), torch::TensorOptions(DEVICE)));
+    torch::Tensor pos_emb = position_embedding_table(torch::arange(torch::Scalar(T), torch::TensorOptions(device))).to(device);
 
     torch::Tensor x = tok_emb + pos_emb;     // (B,T,C)
     x = blocks->forward(x);               // (B,T,C)
@@ -208,7 +210,7 @@ torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int& max_new_toke
 
         // apply softmax to get probabilities (along token dimension)
         torch::Tensor probs = torch::nn::functional::softmax(logits, torch::nn::functional::SoftmaxFuncOptions(1));
-
+    
         // sample from that probability distribution
         torch::Tensor next_idx = torch::multinomial(probs, /*num_samples*/1);
 
