@@ -1,5 +1,6 @@
 #pragma once
+#include <train.h>
 
 namespace tokenizer {
-    int train(const char *input_file, const unsigned int &vocab_size);
+    int train(const TrainingConfig& cfg, const unsigned int &vocab_size);
 }
