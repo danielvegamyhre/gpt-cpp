@@ -22,6 +22,8 @@ add_executable(${PROJECT_NAME}
         src/tokenizer.cpp
         src/tokenizer.cpp
         include/train.h
+        include/argparse.h
+        src/argparse.cpp
 )
 
 target_include_directories(gpt_cpp PRIVATE include)
