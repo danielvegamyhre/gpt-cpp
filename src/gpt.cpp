@@ -1,6 +1,6 @@
 #include <iostream>
 #include <utility>
-#include <torch/torch.h>
+#include "torch/torch.h"
 #include "gpt.h"
 
 // FeedForward implementation.

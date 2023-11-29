@@ -1,5 +1,5 @@
 #include <iostream>
-#include <argparse.h>
+#include "argparse.h"
 
 TrainingConfig& parse_args(int argc, char* argv[]) {
     static TrainingConfig cfg;

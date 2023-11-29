@@ -15,14 +15,14 @@ find_path(SP_INCLUDE_DIR NAMES sentencepiece_processor.h)
 find_path(SP_INCLUDE_DIR NAMES sentencepiece_trainer.h)
 
 add_executable(${PROJECT_NAME}
-        src/train.cpp
         include/gpt.h
         include/tokenizer.h
+        include/train.h
+        include/argparse.h
+        src/train.cpp
         src/gpt.cpp
         src/tokenizer.cpp
         src/tokenizer.cpp
-        include/train.h
-        include/argparse.h
         src/argparse.cpp
 )
 
