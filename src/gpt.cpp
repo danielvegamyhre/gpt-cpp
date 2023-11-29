@@ -55,7 +55,7 @@ torch::Tensor Head::forward(const torch::Tensor& x) {
     torch::Tensor q = query(x); // (B, T, head_size)
 
     // (B,T,head_size) * (B,head_size,T) = (B,T,T)
-    torch::Tensor wei = torch::mm(q, k.transpose(-2, -1)) * std::pow(C, 0.5);
+    torch::Tensor wei = torch::matmul(q, k.transpose(1,2)) * std::pow(C, 0.5);
     torch::Tensor tril = named_buffers()["tril"];
 
     // (B,T,T)
@@ -65,7 +65,7 @@ torch::Tensor Head::forward(const torch::Tensor& x) {
 
     // Perform weighted aggregation of values.
     torch::Tensor v = value(x);
-    return torch::mm(wei, v);
+    return torch::matmul(wei, v);
 }
 
 torch::Tensor Head::operator()(const torch::Tensor& x) {
@@ -74,9 +74,7 @@ torch::Tensor Head::operator()(const torch::Tensor& x) {
 
 // MultiHeadAttention implementation.
 MultiHeadAttention::MultiHeadAttention(const unsigned int &num_heads, const unsigned int &head_size) :
-    heads(torch::nn::ModuleList(
-
-            )),
+    heads(torch::nn::ModuleList()),
     projection(torch::nn::Linear(num_heads * head_size, EMBED_SIZE)),
     dropout(torch::nn::Dropout(DROPOUT)) {
 
@@ -90,7 +88,7 @@ torch::Tensor MultiHeadAttention::forward(const torch::Tensor& x) {
     for (const auto&  module : *heads) {
         outputs.push_back(module->as<Head>()->forward(x));
     }
-    torch::Tensor out = torch::cat(outputs);
+    torch::Tensor out = torch::cat(outputs, /*dim=*/2);
     out = projection(out);
     return dropout(out);
 }
@@ -206,11 +204,13 @@ torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int& max_new_toke
         // focus only on the last step in time (final token)
         torch::IntArrayRef logits_sizes = logits.sizes();
         unsigned int tok_len = logits_sizes[1];
-        logits = logits.slice(0).slice(1, tok_len-1).slice(0);
+
+        // logits = logits[:, -1, :]
+        logits = logits.slice(1, logits.size(1) - 1, logits.size(1)).squeeze(1);
 
         // apply softmax to get probabilities (along token dimension)
         torch::Tensor probs = torch::nn::functional::softmax(logits, torch::nn::functional::SoftmaxFuncOptions(1));
-    
+
         // sample from that probability distribution
         torch::Tensor next_idx = torch::multinomial(probs, /*num_samples*/1);
 

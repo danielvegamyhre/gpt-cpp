@@ -35,15 +35,19 @@ namespace tokenizer {
         }
         input.close();
 
-        std::cout << data << std::endl;
-
         // Tokenize the data and store it in numeric/tensor format in the output file.
-        std::cout << "TOKENIZING INPUT FILE: " << input_file << std::endl;
         std::vector<int> ids = processor.EncodeAsIds(data);
-        torch::Tensor tensor = torch::tensor(ids);
+        torch::Tensor tensor = torch::tensor(ids, torch::kInt);
 
-        std::cout << "TENSOR NUM ELEMS: " << tensor.numel() << std::endl;
         torch::save(tensor, input_file + TOKENIZED_FILE_SUFFIX);
         return {sentencepiece::util::StatusCode::kOk, "Finished tokenizing input file and saved tensor output file."};
+    }
+
+    std::string decode(const sentencepiece::SentencePieceProcessor& processor, const torch::Tensor& ids) {
+        std::string text;
+        torch::Tensor int_ids = ids.to(torch::kInt);
+        std::vector<int> ids_vec = std::vector<int>(int_ids.data_ptr<int>(), int_ids.data_ptr<int>() + int_ids.numel());
+        processor.Decode(ids_vec, &text);
+        return text;
     }
 } // tokenizer namespace

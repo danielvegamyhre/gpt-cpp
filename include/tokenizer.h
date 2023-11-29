@@ -1,6 +1,7 @@
 #pragma once
 // third party includes
 #include "sentencepiece_trainer.h"
+#include "torch/torch.h"
 // local includes
 #include "train.h"
 
@@ -15,4 +16,7 @@ namespace tokenizer {
     // output file, which has the same file path as the input but with a "_tokenized" suffix appended.
     // Returns a Status object indicating the result.
     Status process(const sentencepiece::SentencePieceProcessor& processor, const std::string& input_file);
+
+    // decode accepts a tensor of token IDs and decodes them into the corresponding output text.
+    std::string decode(const sentencepiece::SentencePieceProcessor& processor, const torch::Tensor& ids);
 }

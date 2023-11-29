@@ -8,11 +8,12 @@ struct TrainingConfig {
     std::string eval_file;
 
     // Optional flags with one arg and default values.
-    bool generate {false};
+    unsigned int generate {0};
     unsigned int eval_interval {1000};
     unsigned int eval_iters {100};
     double learning_rate {1e-3};
     unsigned int epochs {0};
+    unsigned int vocab_size {1000};
     std::string device {"cpu"};
 
     // Optional flags with one arg and no defaults.

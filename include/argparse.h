@@ -18,7 +18,6 @@ using OneArgHandler = std::function<void(TrainingConfig&, const std::string& arg
 // Flags with no arguments.
 #define NO_ARG(str, f, v) {str, [](TrainingConfig& cfg) {cfg.f = v;}}
 const std::unordered_map<std::string, NoArgHandler> NoArgs {
-        NO_ARG("--generate", generate, true),
         NO_ARG("--verbose", verbose, true),
 };
 #undef NO_ARG
@@ -36,6 +35,8 @@ const std::unordered_map<std::string, OneArgHandler> OneArgs {
         ONE_ARG("--eval-interval", eval_interval, stoi(arg)),
         ONE_ARG("--eval-iters", eval_iters, stoi(arg)),
         ONE_ARG("--learning-rate", learning_rate, stof(arg)),
+        ONE_ARG("--vocab-size", vocab_size, stoi(arg)),
+        ONE_ARG("--generate", generate, stoi(arg)),
 };
 #undef ONE_ARG
 
