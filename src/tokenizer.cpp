@@ -21,11 +21,11 @@ namespace tokenizer {
         return sentencepiece::SentencePieceTrainer::Train(args);
     }
 
-    Status process(const sentencepiece::SentencePieceProcessor& processor, const std::string& input_file) {
+    std::pair<torch::Tensor*, Status> process(const sentencepiece::SentencePieceProcessor& processor, const std::string& input_file) {
         std::ifstream input(input_file);
         if (!input.is_open()) {
             std::cerr << "Unable to input file: " << input_file << std::endl;
-            return {sentencepiece::util::StatusCode::kPermissionDenied, "Unable to open input file."};
+            return {nullptr, {sentencepiece::util::StatusCode::kPermissionDenied, "Unable to open input file."}};
         }
 
         // Read input file into token
@@ -40,7 +40,7 @@ namespace tokenizer {
         torch::Tensor tensor = torch::tensor(ids, torch::kInt);
 
         torch::save(tensor, input_file + TOKENIZED_FILE_SUFFIX);
-        return {sentencepiece::util::StatusCode::kOk, "Finished tokenizing input file and saved tensor output file."};
+        return {&tensor, {sentencepiece::util::StatusCode::kOk, "Finished tokenizing input file and saved tensor output file."}};
     }
 
     std::string decode(const sentencepiece::SentencePieceProcessor& processor, const torch::Tensor& ids) {

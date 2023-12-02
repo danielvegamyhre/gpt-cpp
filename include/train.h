@@ -1,6 +1,10 @@
 #pragma once
 #include <iostream>
 
+// Data split constants.
+static const std::string TRAIN = "TRAIN";
+static const std::string EVAL = "EVAL";
+
 // TrainingConfig contains various configurations for a specific training run.
 struct TrainingConfig {
     // Required flags with one arg (i.e. "--train=<file>")
