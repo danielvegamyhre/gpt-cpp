@@ -6,24 +6,27 @@
 #include "gpt.h"
 
 // DATA maps a split (train, eval) to the tensor representation of the data.
-static std::unordered_map<std::string, torch::Tensor*> DATA;
+static std::unordered_map<std::string, torch::Tensor> DATA;
 
 // get_batch returns a pair of tensors (X,Y) where X is data from the given split (train or eval),
 // and Y is the corresponding labels.
-std::pair<torch::Tensor&, torch::Tensor&> get_batch(const std::string& split, const std::string& device) {
-    torch::Tensor data = *DATA[split];
+std::pair<torch::Tensor, torch::Tensor> get_batch(const std::string& split, const std::string& device) {
+    const torch::Tensor data = DATA[split];
     // Get BATCH_SIZE random indexes between 0 and len(data)-SEQ_LEN (since we will be using the following
     // SEQ_LEN elements after the index).
-    torch::Tensor ix = torch::randint(data.numel() - SEQ_LEN, {BATCH_SIZE,});
-    torch::Tensor x, y;
+    torch::Tensor ix = torch::randint(data.size(0) - SEQ_LEN, {BATCH_SIZE});
+    std::vector<torch::Tensor> x_vec, y_vec;
     for (int i = 0; i < ix.size(0); i++) {
         // input sequence.
-        x = torch::stack({x, data.slice(i, i+SEQ_LEN)});
+        x_vec.push_back(data.slice(0, i, i+SEQ_LEN));
+
         // labels are the next index for each index in the input sequence,
         // so our model can predict the next token for each index in x, and
         // compare to the ground truth in y.
-        y = torch::stack({y, data.slice(i+1, i+1+SEQ_LEN)});
+        y_vec.push_back(data.slice(0, i+1, i+1+SEQ_LEN));
     }
+    torch::Tensor x = torch::stack(x_vec);
+    torch::Tensor y = torch::stack(y_vec);
     x.to(device);
     y.to(device);
     return {x, y};
@@ -76,10 +79,14 @@ int main(int argc, char* argv[]) {
     // Create optimizer.
     torch::optim::AdamWOptions opts = {/*lr=*/cfg.learning_rate};
     torch::optim::AdamW optim = torch::optim::AdamW(model.parameters(), opts);
-    uint32_t start_epoch = 0;
-    double loss = INFINITY;
 
-    // TODO: load checkpoint if specified.
+    // Load model checkpoint if specified.
+    if (cfg.load_checkpoint.has_value()) {
+        torch::serialize::InputArchive input_archive;
+        input_archive.load_from(cfg.load_checkpoint.value());
+        model.load(input_archive);
+    }
+    uint32_t start_epoch = 0;
 
     // Generate output if this is not a training run.
     if (cfg.generate > 0) {
@@ -95,9 +102,10 @@ int main(int argc, char* argv[]) {
 
     // Training loop
     std::cout << "Starting training" << std::endl;
-    for (int i = start_epoch; i < cfg.epochs; i++) {
+    for (int epoch = start_epoch; epoch < cfg.epochs; epoch++) {
+        std::cout << "Epoch: " << epoch << std::endl;
         // Don't estimate loss on first epoch.
-        if (i != start_epoch && i % cfg.eval_interval == 0) {
+        if (epoch != start_epoch && epoch % cfg.eval_interval == 0) {
             std::cout << "Estimating loss on eval data" << std::endl;
             // TODO: estimate loss
         }
@@ -117,8 +125,27 @@ int main(int argc, char* argv[]) {
         // Update parameters.
         optim.step();
 
-        // TODO: checkpoint model
+        // Checkpoint model.
+        if (epoch != start_epoch) {
+            // If this epoch is a checkpoint interval, or we are on the last epoch, save the model.
+            if (cfg.checkpoint_interval.has_value() && epoch % cfg.checkpoint_interval.value() == 0 || epoch == cfg.epochs - 1) {
+                std::cout << "Checkpointing model" << std::endl;
+
+                // Serialize model to output archive.
+                torch::serialize::OutputArchive output_archive;
+                model.save(output_archive);
+
+                // Write serialized model to disk.
+                std::string model_path = "model.pt";
+                if (cfg.save_checkpoint.has_value()) {
+                    model_path = cfg.save_checkpoint.value();
+                }
+                output_archive.save_to(model_path);
+                std::cout << "Checkpointed model to: " << model_path << std::endl;
+            }
+        }
     }
 
-    return 0;
+    std::cout << "Training complete." << std::endl;
+    return EXIT_SUCCESS;
 }

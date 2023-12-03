@@ -158,10 +158,10 @@ std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, c
     const int T = sizes[1]; // time/token dimension
 
     // (B,T,C)
-    torch::Tensor tok_emb = token_embedding_table(idx).to(device);
+    const torch::Tensor tok_emb = token_embedding_table(idx);
 
     // (T, C)
-    torch::Tensor pos_emb = position_embedding_table(torch::arange(torch::Scalar(T), torch::TensorOptions(device))).to(device);
+    const torch::Tensor pos_emb = position_embedding_table(torch::arange(torch::Scalar(T), torch::TensorOptions(device)));
 
     torch::Tensor x = tok_emb + pos_emb;     // (B,T,C)
     x = blocks->forward(x);               // (B,T,C)
@@ -183,10 +183,14 @@ std::pair<torch::Tensor, torch::Tensor> GPT::forward(const torch::Tensor& idx, c
     const int logits_B = logits_sizes[0]; // logits batch dimension
     const int logits_T = logits_sizes[1]; // logits token dimension
     const int logits_C = logits_sizes[2]; // logits channels
-    logits = logits.view({logits_B * logits_T, logits_C});
-    torch::Tensor y_values = labels_tensor.view({logits_B * logits_T});
-    torch::Tensor loss = torch::nn::functional::cross_entropy(logits, y_values);
+    logits = logits.view({logits_B * logits_T, logits_C}); // (B*T, C)
+    const torch::Tensor y_values = labels_tensor.view({logits_B * logits_T}); // (B,T)
+    const torch::Tensor loss = torch::nn::functional::cross_entropy(logits, y_values.to(torch::kLong));
     return {logits, loss};
+}
+
+std::pair<torch::Tensor, torch::Tensor> GPT::operator()(const torch::Tensor& idx, c10::optional<torch::Tensor> labels) {
+    return forward(idx, labels);
 }
 
 // generate predicts the next `max_new_tokens` given the input idx, which an index
@@ -203,7 +207,6 @@ torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int& max_new_toke
 
         // focus only on the last step in time (final token)
         torch::IntArrayRef logits_sizes = logits.sizes();
-        unsigned int tok_len = logits_sizes[1];
 
         // logits = logits[:, -1, :]
         logits = logits.slice(1, logits.size(1) - 1, logits.size(1)).squeeze(1);
