@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     const TrainingConfig& cfg = parse_args(argc, argv);
 
     // Train a tokenizer for this dataset (training and eval data) if it does not exist.
-    const auto status = tokenizer::train(cfg, 646);
+    const auto status = tokenizer::train(cfg, cfg.vocab_size);
     std::cout << status.ToString() << std::endl;
     if (!status.ok()) {
         std::cerr << "Error training sentencepiece tokenizer model: " << status.ToString() << std::endl;
@@ -53,18 +53,21 @@ int main(int argc, char* argv[]) {
     const auto load_status = processor.Load("tok.model");
     if (!load_status.ok()) {
         std::cerr << "Error loading sentencepiece tokenizer model: " << load_status.ToString() << std::endl;
+        return EXIT_FAILURE;
     }
 
     // Tokenize training and eval files.
     const auto [train_tensor, p1_status] = tokenizer::process(processor, cfg.train_file);
     if (p1_status.code() != sentencepiece::util::StatusCode::kOk) {
         std::cerr << "Error processing training file: " << p1_status.ToString() << std::endl;
+        return EXIT_FAILURE;
     }
     std::cout << "Finished tokenizing training file: " << cfg.train_file << std::endl;
 
     const auto [eval_tensor, p2_status] = tokenizer::process(processor, cfg.eval_file);
     if (p2_status.code() != sentencepiece::util::StatusCode::kOk) {
         std::cerr << "Error processing eval file: " << p2_status.ToString() << std::endl;
+        return EXIT_FAILURE;
     }
     std::cout << "Finished tokenizing eval file: " << cfg.eval_file << std::endl;
 
@@ -92,11 +95,9 @@ int main(int argc, char* argv[]) {
     if (cfg.generate > 0) {
         std::cout << "Generating output of length: " << cfg.generate << std::endl;
         auto ctx = torch::zeros({1,1}, torch::kLong).to({cfg.device});
-        auto generate = [&](const uint32_t max_new_tokens){
-            const torch::Tensor output_token_ids = model.generate(ctx, max_new_tokens);
-            return tokenizer::decode(processor, output_token_ids);
-        };
-        std::cout << generate(cfg.generate) << std::endl;
+        const torch::Tensor output_token_ids = model.generate(ctx, cfg.generate);
+        const std::string output = tokenizer::decode(processor, output_token_ids);
+        std::cout << output << std::endl;
         return EXIT_SUCCESS;
     }
 
@@ -116,8 +117,10 @@ int main(int argc, char* argv[]) {
         // Perform forward pass.
         auto [_, loss] = model.forward(xb, yb);
 
+        std::cout << "Loss: " << loss.item() << std::endl;
+
         // Zero out gradients.
-        optim.zero_grad();
+        optim.zero_grad(true);
 
         // Backward pass.
         loss.backward();
