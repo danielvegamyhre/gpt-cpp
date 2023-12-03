@@ -13,7 +13,7 @@
 #define TOKENIZED_FILE_SUFFIX "_tokenized"
 
 namespace tokenizer {
-    Status train(const TrainingConfig& cfg, const unsigned int &vocab_size) {
+    Status train(const TrainingConfig& cfg, const uint32_t &vocab_size) {
         char args[500];
         char *format = "--input=%s,%s --model_prefix=%s --vocab_size=%d --input_sentence_size=200 --shuffle_input_sentence=true";
         std::snprintf(args, 500, format, cfg.train_file.data(), cfg.eval_file.data(), TOKENIZER_MODEL_PREFIX, vocab_size);

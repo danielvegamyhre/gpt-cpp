@@ -10,7 +10,7 @@ using Status = sentencepiece::util::Status;
 namespace tokenizer {
     // train trains a sentencepiece tokenizer on the training and eval datasets defined in
     // the given TrainingConfig, and returns a Status indicating the result.
-    Status train(const TrainingConfig& cfg, const unsigned int &vocab_size);
+    Status train(const TrainingConfig& cfg, const uint32_t &vocab_size);
 
     // process tokenizes an input file into a numeric (tensor) format and stores the output in an
     // output file, which has the same file path as the input but with a "_tokenized" suffix appended.

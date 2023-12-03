@@ -3,13 +3,13 @@
 #include <torch/torch.h>
 
 // Number of independent examples to process at once.
-static const unsigned int BATCH_SIZE = 64;
+static const uint32_t BATCH_SIZE = 64;
 
 // Maximum context length for one input.
-static const unsigned int SEQ_LEN = 256;
+static const uint32_t SEQ_LEN = 256;
 
 // Embedding dimension size.
-static const unsigned int EMBED_SIZE = 384;
+static const uint32_t EMBED_SIZE = 384;
 
 // Dropout ratio.
 static const float DROPOUT = 0.2f;
@@ -19,7 +19,7 @@ class FeedForward : public torch::nn::Module {
 private:
     torch::nn::Sequential seq;
 public:
-    FeedForward(const unsigned int& num_embed_dims);
+    FeedForward(const uint32_t& num_embed_dims);
     torch::Tensor forward(const torch::Tensor& x);
     torch::Tensor operator()(const torch::Tensor& x);
 };
@@ -27,13 +27,13 @@ public:
 // Single head of self-attention.
 class Head : public torch::nn::Module {
 private:
-    const unsigned int head_size;
+    const uint32_t head_size;
     torch::nn::Linear key;
     torch::nn::Linear query;
     torch::nn::Linear value;
     torch::nn::Dropout dropout;
 public:
-    Head(const unsigned int& head_size);
+    Head(const uint32_t& head_size);
     torch::Tensor forward(const torch::Tensor& x);
     torch::Tensor operator()(const torch::Tensor& x);
 };
@@ -45,7 +45,7 @@ private:
     torch::nn::Linear projection;
     torch::nn::Dropout dropout;
 public:
-    MultiHeadAttention(const unsigned int& num_heads, const unsigned int& head_size);
+    MultiHeadAttention(const uint32_t& num_heads, const uint32_t& head_size);
     torch::Tensor forward(const torch::Tensor& x);
     torch::Tensor operator()(const torch::Tensor& x);
 };
@@ -58,7 +58,7 @@ private:
     torch::nn::LayerNorm layer_norm_1;
     torch::nn::LayerNorm layer_norm_2;
 public:
-    Block(const unsigned int& num_heads);
+    Block(const uint32_t& num_heads);
     torch::Tensor forward(torch::Tensor x);
     torch::Tensor operator()(const torch::Tensor& x);
 };
@@ -74,8 +74,8 @@ private:
     torch::nn::Linear lm_head;
     static void init_weights(const torch::nn::Module& module);
 public:
-    GPT(const unsigned int& vocab_size, const std::string& device);
+    GPT(const uint32_t& vocab_size, const std::string& device);
     std::pair<torch::Tensor, torch::Tensor> forward(const torch::Tensor& idx, c10::optional<torch::Tensor> labels = c10::nullopt);
-    torch::Tensor generate(torch::Tensor& idx, const unsigned int& max_new_tokens);
+    torch::Tensor generate(torch::Tensor& idx, const uint32_t& max_new_tokens);
     std::pair<torch::Tensor, torch::Tensor> operator()(const torch::Tensor& idx, c10::optional<torch::Tensor> labels = c10::nullopt);
 };

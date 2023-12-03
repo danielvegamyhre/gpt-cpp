@@ -4,7 +4,7 @@
 #include "gpt.h"
 
 // FeedForward implementation.
-FeedForward::FeedForward(const unsigned int& num_embed_dims) :
+FeedForward::FeedForward(const uint32_t& num_embed_dims) :
     seq(torch::nn::Linear(num_embed_dims, 4*num_embed_dims),
             torch::nn::ReLU(),
             torch::nn::Linear(4*num_embed_dims, num_embed_dims),
@@ -21,7 +21,7 @@ torch::Tensor FeedForward::operator()(const torch::Tensor& x) {
 }
 
 // Head implementation.
-Head::Head(const unsigned int& head_size) :
+Head::Head(const uint32_t& head_size) :
     head_size(head_size),
     key(torch::nn::Linear(torch::nn::LinearOptions(EMBED_SIZE, head_size).bias(false))),
     query(torch::nn::Linear(torch::nn::LinearOptions(EMBED_SIZE, head_size).bias(false))),
@@ -47,9 +47,9 @@ torch::Tensor Head::forward(const torch::Tensor& x) {
         throw std::invalid_argument("input tensor must be 3 dimensional");
     }
     torch::IntArrayRef sizes = x.sizes();
-    const unsigned int B = sizes[0];
-    const unsigned int T = sizes[1];
-    const unsigned int C = sizes[2];
+    const uint32_t B = sizes[0];
+    const uint32_t T = sizes[1];
+    const uint32_t C = sizes[2];
 
     torch::Tensor k = key(x);   // (B, T, head_size)
     torch::Tensor q = query(x); // (B, T, head_size)
@@ -73,7 +73,7 @@ torch::Tensor Head::operator()(const torch::Tensor& x) {
 }
 
 // MultiHeadAttention implementation.
-MultiHeadAttention::MultiHeadAttention(const unsigned int &num_heads, const unsigned int &head_size) :
+MultiHeadAttention::MultiHeadAttention(const uint32_t &num_heads, const uint32_t &head_size) :
     heads(torch::nn::ModuleList()),
     projection(torch::nn::Linear(num_heads * head_size, EMBED_SIZE)),
     dropout(torch::nn::Dropout(DROPOUT)) {
@@ -98,7 +98,7 @@ torch::Tensor MultiHeadAttention::operator()(const torch::Tensor& x) {
 }
 
 // Transformer block implementation.
-Block::Block(const unsigned int& num_heads) :
+Block::Block(const uint32_t& num_heads) :
         self_attention(MultiHeadAttention(num_heads, EMBED_SIZE/num_heads)),
         feed_forward(EMBED_SIZE),
         layer_norm_1(torch::nn::LayerNorm(torch::nn::LayerNormOptions({EMBED_SIZE}))),
@@ -117,7 +117,7 @@ torch::Tensor Block::operator()(const torch::Tensor& x) {
 
 
 // Decoder-only transformer model implementation.
-GPT::GPT(const unsigned int& vocab_size, const std::string& device) :
+GPT::GPT(const uint32_t& vocab_size, const std::string& device) :
     device(device),
     token_embedding_table(torch::nn::Embedding(torch::nn::EmbeddingOptions(vocab_size, EMBED_SIZE))),
     position_embedding_table(torch::nn::Embedding(torch::nn::EmbeddingOptions(SEQ_LEN, EMBED_SIZE))),
@@ -195,15 +195,15 @@ std::pair<torch::Tensor, torch::Tensor> GPT::operator()(const torch::Tensor& idx
 
 // generate predicts the next `max_new_tokens` given the input idx, which an index
 // of shape (B,T) representing the current context.
-torch::Tensor GPT::generate(torch::Tensor& idx, const unsigned int& max_new_tokens) {
+torch::Tensor GPT::generate(torch::Tensor& idx, const uint32_t& max_new_tokens) {
     for (int i = 0; i < max_new_tokens; ++i) {
         // crop context to last "max sequence length" tokens
         torch::IntArrayRef idx_sizes = idx.sizes();
-        unsigned int ctx_len = idx_sizes[1];
+        uint32_t ctx_len = idx_sizes[1];
         torch::Tensor idx_cond = idx.slice(/*dim=*/0).slice(1, /*start=*/ctx_len-SEQ_LEN);
 
         // predict next token
-        auto[logits, loss] = forward(idx);
+        auto [logits, loss] = forward(idx);
 
         // focus only on the last step in time (final token)
         torch::IntArrayRef logits_sizes = logits.sizes();
