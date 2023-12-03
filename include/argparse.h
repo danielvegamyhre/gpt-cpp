@@ -37,6 +37,7 @@ const std::unordered_map<std::string, OneArgHandler> OneArgs {
         ONE_ARG("--learning-rate", learning_rate, stof(arg)),
         ONE_ARG("--vocab-size", vocab_size, stoi(arg)),
         ONE_ARG("--generate", generate, stoi(arg)),
+        ONE_ARG("--device", device, arg),
 };
 #undef ONE_ARG
 
