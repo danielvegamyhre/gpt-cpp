@@ -55,7 +55,7 @@ torch::Tensor Head::forward(const torch::Tensor& x) {
     torch::Tensor q = query(x); // (B, T, head_size)
 
     // (B,T,head_size) * (B,head_size,T) = (B,T,T)
-    torch::Tensor wei = torch::matmul(q, k.transpose(1,2)) * std::pow(C, 0.5);
+    torch::Tensor wei = torch::matmul(q, k.transpose(1,2)) / std::pow(C, 0.5);
     torch::Tensor tril = named_buffers()["tril"];
 
     // (B,T,T)
